@@ -265,17 +265,27 @@ pub fn main() !void {
         if (sq1.pos.y < 0) sq1.pos.y = HEIGHT - 1;
 
         //PHYSICS
+        var color1 = sq1.color;
+        var color2 = sq2.color;
+        const collision = squaresCollide(sq1, sq2);
+        if (collision) {
+            color1 = 0xFFFF_FFFF;
+            color2 = 0xFFFF_FFFF;
+        }
+        const push: vec2 = ResolveSquaresCollide(sq1, sq2);
 
+        sq2.pos.x += push.x;
+        sq2.pos.y += push.y;
         // --- draw ---
         // clear to dark grey
         @memset(pixel_buf[0 .. WIDTH * HEIGHT], 0xFF222222);
 
         // draw square — 0xAARRGGBB
 
-        drawSquare(pixel_buf, WIDTH, HEIGHT, sq1.pos.x, sq1.pos.y, 50, 50, sq1.color);
+        drawSquare(pixel_buf, WIDTH, HEIGHT, sq1.pos.x, sq1.pos.y, 50, 50, color1);
 
         //draw square 2
-        drawSquare(pixel_buf, WIDTH, HEIGHT, sq2.pos.x, sq2.pos.y, 50, 50, sq2.color);
+        drawSquare(pixel_buf, WIDTH, HEIGHT, sq2.pos.x, sq2.pos.y, 50, 50, color2);
         // drawSquare(pixel_buf, WIDTH, HEIGHT, sq1.pos.x - 10, sq1.pos.y + 10, 60, 50, color);
         // var j: i32 = sq1.pos.y;
         // while (j < sq1.pos.y + 50) : (j += 1) {
@@ -302,4 +312,50 @@ fn drawSquare(pixels: [*]u32, pbw: i32, pbh: i32, posx: i32, posy: i32, w: i32, 
             }
         }
     }
+}
+
+fn squaresCollide(
+    e1: entity,
+    e2: entity,
+) bool {
+    const dx = @abs(e1.pos.x - e2.pos.x);
+    const dy = @abs(e1.pos.y - e2.pos.y);
+    // std.debug.print("dx:{} | dy:{}\n", .{ dx, dy });
+
+    return dx < (@divTrunc(e1.w, 2) + @divTrunc(e2.w, 2)) and
+        dy < (@divTrunc(e1.h, 2) + @divTrunc(e2.h, 2));
+}
+
+fn ResolveSquaresCollide(
+    e1: entity,
+    e2: entity,
+) vec2 {
+    const dx: i32 = @intCast(@abs(e1.pos.x - e2.pos.x));
+    const dy: i32 = @intCast(@abs(e1.pos.y - e2.pos.y));
+    // std.debug.print("dx:{} | dy:{}\n", .{ dx, dy });
+
+    const overlapx = @divTrunc(e1.w, 2) + @divTrunc(e2.w, 2) - dx;
+    const overlapy = @divTrunc(e1.h, 2) + @divTrunc(e2.h, 2) - dy;
+
+    // if(dx < (@divTrunc(e1.w, 2) + @divTrunc(e2.w, 2)) and
+    // dy < (@divTrunc(e1.h, 2) + @divTrunc(e2.h, 2)){
+
+    // }
+    var push: vec2 = vec2{};
+    if (overlapx > 0 and overlapy > 0) {
+        std.debug.print("overlap: {} {}\n", .{ overlapx, overlapy });
+        if (overlapx < overlapy) { //resolve collision with x axis
+            // std.debug.print("overlap X\n", .{});
+            push.x = overlapx;
+        } else if (overlapy < overlapx) {
+            // std.debug.print("overlap Y\n", .{});
+            push.y = overlapy;
+        } else { //equality edge case
+
+        }
+    }
+
+    return push;
+    // return dx < (@divTrunc(e1.w, 2) + @divTrunc(e2.w, 2)) and
+    // dy < (@divTrunc(e1.h, 2) + @divTrunc(e2.h, 2));
 }
