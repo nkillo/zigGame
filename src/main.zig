@@ -45,6 +45,7 @@ const entity = struct {
 
 var sq1: entity = entity{};
 var sq2: entity = entity{};
+var goal: entity = entity{};
 
 var g_running = true;
 var g_hdc_mem: gdi.HDC = undefined;
@@ -194,6 +195,11 @@ pub fn main() !void {
     sq2.max.y = @divTrunc(sq2.pos.y, 2);
     sq2.color = 0xFF44FF00;
 
+    goal.pos.x = 400;
+    goal.pos.y = 400;
+    goal.w = 50;
+    goal.h = 50;
+    goal.color = 0xFFAA_BBCC;
     var msg: ui.MSG = undefined;
 
     // var input = Input{};
@@ -282,10 +288,18 @@ pub fn main() !void {
 
         // draw square — 0xAARRGGBB
 
-        drawSquare(pixel_buf, WIDTH, HEIGHT, sq1.pos.x, sq1.pos.y, 50, 50, color1);
+        drawSquare(pixel_buf, WIDTH, HEIGHT, goal.pos.x, goal.pos.y, goal.w, goal.h, goal.color);
+        if (sq2.pos.x == goal.pos.x and sq2.pos.y == goal.pos.y) {
+            const w = goal.w * 2;
+            const h = goal.h * 2;
+            const halfw = @divTrunc(goal.w, 2);
+            const halfh = @divTrunc(goal.h, 2);
+            drawSquare(pixel_buf, WIDTH, HEIGHT, goal.pos.x - halfw, goal.pos.y - halfh, w, h, 0xFFFFFFFF);
+        }
 
-        //draw square 2
-        drawSquare(pixel_buf, WIDTH, HEIGHT, sq2.pos.x, sq2.pos.y, 50, 50, color2);
+        drawSquare(pixel_buf, WIDTH, HEIGHT, sq1.pos.x, sq1.pos.y, sq1.w, sq1.h, color1);
+        drawSquare(pixel_buf, WIDTH, HEIGHT, sq2.pos.x, sq2.pos.y, sq2.w, sq2.h, color2);
+
         // drawSquare(pixel_buf, WIDTH, HEIGHT, sq1.pos.x - 10, sq1.pos.y + 10, 60, 50, color);
         // var j: i32 = sq1.pos.y;
         // while (j < sq1.pos.y + 50) : (j += 1) {
@@ -347,9 +361,11 @@ fn ResolveSquaresCollide(
         if (overlapx < overlapy) { //resolve collision with x axis
             // std.debug.print("overlap X\n", .{});
             push.x = overlapx;
+            if (e1.pos.x > e2.pos.x) push.x = -push.x;
         } else if (overlapy < overlapx) {
             // std.debug.print("overlap Y\n", .{});
             push.y = overlapy;
+            if (e1.pos.y > e2.pos.y) push.y = -push.y;
         } else { //equality edge case
 
         }
