@@ -1,3 +1,14 @@
+//TODO
+//  input
+//      -keypresses
+//      -mouse position
+
+//  debug text
+//      -import font atlas array
+
+//  sprites
+// aabb collision resolution
+
 const std = @import("std");
 const win32 = @import("win32");
 const ui = win32.ui.windows_and_messaging;
