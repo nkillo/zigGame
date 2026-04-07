@@ -134,6 +134,9 @@ pub fn main() !void {
                 g_running = false;
                 break;
             }
+            if (msg.message == ui.WM_KEYDOWN) {
+                std.debug.print("KEYDOWN\n", .{});
+            }
             _ = ui.TranslateMessage(&msg);
             _ = ui.DispatchMessageA(&msg);
         }
