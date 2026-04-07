@@ -12,6 +12,7 @@
 const std = @import("std");
 const win32 = @import("win32");
 const ui = win32.ui.windows_and_messaging;
+const winput = win32.ui.input.keyboard_and_mouse;
 const foundation = win32.foundation;
 const gdi = win32.graphics.gdi;
 const lib = win32.system.library_loader;
@@ -20,27 +21,66 @@ const lib = win32.system.library_loader;
 const WIDTH = 800;
 const HEIGHT = 600;
 
+var up: bool = false;
+var down: bool = false;
+var left: bool = false;
+var right: bool = false;
+
+const vec2 = struct {
+    x: i32 = 0,
+    y: i32 = 0,
+};
+
+const entity = struct {
+    pos: vec2 = vec2{},
+    w: i32 = 0,
+    h: i32 = 0,
+    min: vec2 = vec2{},
+    max: vec2 = vec2{},
+
+    dynamic: bool = true,
+
+    color: u32 = 0,
+};
+
+var sq1: entity = entity{};
+var sq2: entity = entity{};
+
 var g_running = true;
-var g_pixels: [WIDTH * HEIGHT]u32 = undefined; // ARGB pixels
 var g_hdc_mem: gdi.HDC = undefined;
 var g_bitmap: gdi.HBITMAP = undefined;
 
-fn clearScreen(color: u32) void {
-    @memset(&g_pixels, color);
-}
+const InputType = enum(u8) {
+    w,
+    a,
+    s,
+    d,
+    up,
+    left,
+    down,
+    right,
 
-fn drawRect(x: i32, y: i32, w: i32, h: i32, color: u32) void {
-    var j: i32 = y;
-    while (j < y + h) : (j += 1) {
-        var i: i32 = x;
-        while (i < x + w) : (i += 1) {
-            if (i >= 0 and i < WIDTH and j >= 0 and j < HEIGHT) {
-                g_pixels[@intCast(j * WIDTH + i)] = color;
-            }
-        }
+    // We can get the count automatically
+    pub const count = @typeInfo(InputType).@"enum".fields.len;
+};
+
+const Input = struct {
+    // Array sizes must be known at compile time
+    held: [InputType.count]u8 = [_]u8{0} ** InputType.count,
+    pressed: [InputType.count]u8 = [_]u8{0} ** InputType.count,
+    released: [InputType.count]u8 = [_]u8{0} ** InputType.count,
+
+    mousex: i16 = 0,
+    mousey: i16 = 0,
+    mousedx: i16 = 0,
+    mousedy: i16 = 0,
+    wheel: i16 = 0,
+
+    // You can add helper methods right inside the struct!
+    pub fn isHeld(self: Input, key: InputType) bool {
+        return self.held[@intFromEnum(key)] != 0;
     }
-}
-
+};
 fn render(hwnd: foundation.HWND) void {
     const hdc = gdi.GetDC(hwnd);
     defer _ = gdi.ReleaseDC(hwnd, hdc);
@@ -134,44 +174,132 @@ pub fn main() !void {
     // _ = ui.UpdateWindow(hwnd);
 
     // square position
-    var sq_x: i32 = 100;
-    var sq_y: i32 = 100;
-    _ = &sq_x;
-    _ = &sq_y;
+    sq1.pos.x = 100;
+    sq1.pos.y = 100;
+    sq1.w = 50;
+    sq1.h = 50;
+    sq1.min.x = -(@divTrunc(sq1.pos.x, 2));
+    sq1.min.y = -(@divTrunc(sq1.pos.y, 2));
+    sq1.max.x = @divTrunc(sq1.pos.x, 2);
+    sq1.max.y = @divTrunc(sq1.pos.y, 2);
+    sq1.color = 0xFFFF4400;
+
+    sq2.pos.x = 300;
+    sq2.pos.y = 300;
+    sq2.w = 50;
+    sq2.h = 50;
+    sq2.min.x = -(@divTrunc(sq2.pos.x, 2));
+    sq2.min.y = -(@divTrunc(sq2.pos.y, 2));
+    sq2.max.x = @divTrunc(sq2.pos.x, 2);
+    sq2.max.y = @divTrunc(sq2.pos.y, 2);
+    sq2.color = 0xFF44FF00;
+
     var msg: ui.MSG = undefined;
+
+    // var input = Input{};
+
     while (g_running) {
+        up = false;
+        down = false;
+        left = false;
+        right = false;
         while (ui.PeekMessageA(&msg, null, 0, 0, ui.PM_REMOVE) != 0) {
+            const VkCode = msg.wParam;
+            // var wasDown = ((msg.lParam & (1 << 30)) != 0);
+            // const isDown = ((msg.lParam & (1 << 31)) == 0);
             if (msg.message == ui.WM_QUIT) {
                 g_running = false;
                 break;
             }
             if (msg.message == ui.WM_KEYDOWN) {
+                switch (VkCode) {
+                    @intFromEnum(winput.VK_ESCAPE) => {
+                        std.debug.print("ESCAPE PRESSED\n", .{});
+                        g_running = false;
+                    },
+                    @intFromEnum(winput.VK_SPACE) => {
+                        std.debug.print("SPACE PRESSED\n", .{});
+                    },
+                    @intFromEnum(winput.VK_UP) => {
+                        up = true;
+                    },
+                    @intFromEnum(winput.VK_DOWN) => {
+                        down = true;
+                    },
+                    @intFromEnum(winput.VK_LEFT) => {
+                        left = true;
+                    },
+                    @intFromEnum(winput.VK_RIGHT) => {
+                        right = true;
+                    },
+                    // You MUST have an else if you aren't switching on an enum
+                    // that covers every single number
+                    else => {},
+                }
                 std.debug.print("KEYDOWN\n", .{});
             }
+
             _ = ui.TranslateMessage(&msg);
             _ = ui.DispatchMessageA(&msg);
         }
 
+        //PROCESS INPUT
+        if (up) {
+            sq1.pos.y -= 10;
+        }
+        if (down) {
+            sq1.pos.y += 10;
+        }
+        if (left) {
+            sq1.pos.x -= 10;
+        }
+        if (right) {
+            sq1.pos.x += 10;
+        }
+
         // --- update ---
-        sq_x += 1;
-        if (sq_x > WIDTH) sq_x = 0;
+        // sq1.pos.x += 1;
+        if (sq1.pos.x > WIDTH) sq1.pos.x = 0;
+        if (sq1.pos.x < 0) sq1.pos.x = WIDTH - 1;
+        if (sq1.pos.y > HEIGHT) sq1.pos.y = 0;
+        if (sq1.pos.y < 0) sq1.pos.y = HEIGHT - 1;
+
+        //PHYSICS
 
         // --- draw ---
         // clear to dark grey
         @memset(pixel_buf[0 .. WIDTH * HEIGHT], 0xFF222222);
 
         // draw square — 0xAARRGGBB
-        const color: u32 = 0xFFFF4400;
-        var j: i32 = sq_y;
-        while (j < sq_y + 50) : (j += 1) {
-            var i: i32 = sq_x;
-            while (i < sq_x + 50) : (i += 1) {
-                if (i >= 0 and i < WIDTH and j >= 0 and j < HEIGHT) {
-                    pixel_buf[@intCast(j * WIDTH + i)] = color;
-                }
-            }
-        }
+
+        drawSquare(pixel_buf, WIDTH, HEIGHT, sq1.pos.x, sq1.pos.y, 50, 50, sq1.color);
+
+        //draw square 2
+        drawSquare(pixel_buf, WIDTH, HEIGHT, sq2.pos.x, sq2.pos.y, 50, 50, sq2.color);
+        // drawSquare(pixel_buf, WIDTH, HEIGHT, sq1.pos.x - 10, sq1.pos.y + 10, 60, 50, color);
+        // var j: i32 = sq1.pos.y;
+        // while (j < sq1.pos.y + 50) : (j += 1) {
+        //     var i: i32 = sq1.pos.x;
+        //     while (i < sq1.pos.x + 50) : (i += 1) {
+        //         if (i >= 0 and i < WIDTH and j >= 0 and j < HEIGHT) {
+        //             pixel_buf[@intCast(j * WIDTH + i)] = color;
+        //         }
+        //     }
+        // }
 
         render(hwnd);
+    }
+}
+
+fn drawSquare(pixels: [*]u32, pbw: i32, pbh: i32, posx: i32, posy: i32, w: i32, h: i32, color: u32) void {
+    // draw square — 0xAARRGGBB
+    var y: i32 = posy;
+    while (y < posy + h) : (y += 1) {
+        var x: i32 = posx;
+        while (x < posx + w) : (x += 1) {
+            if (x >= 0 and x < pbw and y >= 0 and y < pbh) {
+                pixels[@intCast(y * pbw + x)] = color;
+            }
+        }
     }
 }
